@@ -5,7 +5,6 @@ import {
   doc,
   query,
   where,
-  orderBy,
   onSnapshot,
   serverTimestamp,
   Timestamp,
@@ -20,18 +19,28 @@ function tasksRef(uid: string) {
 
 export function subscribeToTasks(
   uid: string,
-  callback: (tasks: Task[]) => void
+  callback: (tasks: Task[]) => void,
+  onError?: (error: Error) => void
 ): Unsubscribe {
+  // orderBy を外し JS 側でソート → 複合インデックス不要
   const q = query(
     tasksRef(uid),
-    where("deletedAt", "==", null),
-    orderBy("dueDate", "asc")
+    where("deletedAt", "==", null)
   );
 
-  return onSnapshot(q, (snapshot) => {
-    const tasks = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Task));
-    callback(tasks);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const tasks = snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() } as Task))
+        .sort((a, b) => a.dueDate.seconds - b.dueDate.seconds);
+      callback(tasks);
+    },
+    (error) => {
+      console.error("[subscribeToTasks]", error.code, error.message);
+      onError?.(error);
+    }
+  );
 }
 
 export async function createTask(uid: string, input: TaskInput): Promise<void> {

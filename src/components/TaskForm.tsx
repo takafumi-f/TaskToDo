@@ -21,6 +21,7 @@ export default function TaskForm({ defaultValues, onSubmit, submitLabel }: Props
   const [completed, setCompleted] = useState(defaultValues?.completed ?? false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ title?: string; dueDate?: string }>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   function validate() {
     const errs: typeof errors = {};
@@ -35,10 +36,14 @@ export default function TaskForm({ defaultValues, onSubmit, submitLabel }: Props
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setErrors({});
+    setSubmitError(null);
     setSubmitting(true);
     try {
       await onSubmit({ title: title.trim(), dueDate: new Date(dueDate), completed });
       router.push("/tasks");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSubmitError(`保存に失敗しました: ${msg}`);
     } finally {
       setSubmitting(false);
     }
@@ -46,6 +51,9 @@ export default function TaskForm({ defaultValues, onSubmit, submitLabel }: Props
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {submitError && (
+        <p className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{submitError}</p>
+      )}
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">
           タスク名 <span className="text-red-500">*</span>

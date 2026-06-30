@@ -1,5 +1,3 @@
-"use client";
-
 import { GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut } from "firebase/auth";
 import { getFirebaseAuth } from "./firebase";
 

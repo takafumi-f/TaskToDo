@@ -1,40 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    match /users/{userId} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == userId;
-
-      match /tasks/{taskId} {
-        allow read: if request.auth != null
-                    && request.auth.uid == userId;
-
-        allow create: if request.auth != null
-                      && request.auth.uid == userId
-                      && validTask(request.resource.data);
-
-        allow update: if request.auth != null
-                      && request.auth.uid == userId
-                      && validTask(request.resource.data)
-                      && request.resource.data.createdAt == resource.data.createdAt;
-
-        // 物理削除は禁止（論理削除のみ許可）
-        allow delete: if false;
-      }
-    }
-
-    function validTask(data) {
-      return data.keys().hasAll(['title', 'dueDate', 'completed',
-                                 'createdAt', 'updatedAt', 'deletedAt'])
-        && data.title is string
-        && data.title.size() > 0
-        && data.title.size() <= 200
-        && data.dueDate is timestamp
-        && data.completed is bool
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp
-        && (data.deletedAt == null || data.deletedAt is timestamp);
+    match /users/{userId}/tasks/{taskId} {
+      // 自分のタスクのみ読み取り・作成・更新を許可
+      allow read, create, update: if request.auth != null
+                                  && request.auth.uid == userId;
+      // 物理削除は禁止（論理削除のみ許可）
+      allow delete: if false;
     }
   }
 }

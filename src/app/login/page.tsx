@@ -2,33 +2,50 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged } from "firebase/auth";
-import { getFirebaseAuth } from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext";
 import { signInWithGoogle } from "@/lib/auth";
+import type { AuthError } from "firebase/auth";
+
+const ERROR_MESSAGES: Record<string, string> = {
+  "auth/popup-blocked":          "ポップアップがブロックされました。ブラウザのポップアップ許可設定を確認してください。",
+  "auth/popup-closed-by-user":   "ログインがキャンセルされました。",
+  "auth/operation-not-allowed":  "Google ログインが Firebase コンソールで有効化されていません。",
+  "auth/invalid-api-key":        "Firebase の API キーが正しくありません。.env.local を確認してください。",
+  "auth/unauthorized-domain":    "このドメインは Firebase の承認済みドメインに登録されていません。",
+  "auth/network-request-failed": "ネットワークエラーが発生しました。接続を確認してください。",
+};
+
+function toMessage(error: unknown): string {
+  const code = (error as AuthError)?.code ?? "";
+  return ERROR_MESSAGES[code] ?? `ログインに失敗しました (${code || "不明なエラー"})`;
+}
 
 export default function LoginPage() {
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
 
+  // 認証済みならタスク一覧へ
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (user) => {
-      if (user) router.replace("/tasks");
-      else setLoading(false);
-    });
-    return unsubscribe;
-  }, [router]);
+    if (!loading && user) {
+      router.replace("/tasks");
+    }
+  }, [loading, user, router]);
 
   async function handleLogin() {
     setError(null);
+    setSigningIn(true);
     try {
       await signInWithGoogle();
-    } catch {
-      setError("ログインに失敗しました。もう一度お試しください。");
+      // signInWithPopup 成功 → onAuthStateChanged が発火し上の useEffect で /tasks へ遷移
+    } catch (err) {
+      setError(toMessage(err));
+      setSigningIn(false);
     }
   }
 
-  if (loading) {
+  if (loading || (!loading && user)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p className="text-gray-500">読み込み中...</p>
@@ -54,10 +71,11 @@ export default function LoginPage() {
 
         <button
           onClick={handleLogin}
-          className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95"
+          disabled={signingIn}
+          className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <GoogleIcon />
-          Google でログイン
+          {signingIn ? "ログイン中..." : "Google でログイン"}
         </button>
       </div>
     </div>

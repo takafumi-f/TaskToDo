@@ -1,26 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged, type User } from "firebase/auth";
-import { getFirebaseAuth } from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext";
+import type { User } from "firebase/auth";
 
 export default function AuthGuard({ children }: { children: (user: User) => React.ReactNode }) {
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (u) => {
-      if (u) {
-        setUser(u);
-      } else {
-        router.replace("/login");
-      }
-      setLoading(false);
-    });
-    return unsubscribe;
-  }, [router]);
+    if (!loading && !user) {
+      router.replace("/login");
+    }
+  }, [loading, user, router]);
 
   if (loading) {
     return (

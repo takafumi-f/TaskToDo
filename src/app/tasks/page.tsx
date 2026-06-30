@@ -11,9 +11,14 @@ import AuthGuard from "@/components/AuthGuard";
 function TaskListContent({ user }: { user: User }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = subscribeToTasks(user.uid, setTasks);
+    const unsubscribe = subscribeToTasks(
+      user.uid,
+      (t) => { setTasks(t); setFetchError(null); },
+      (err) => setFetchError(`タスクの取得に失敗しました: ${err.message}`)
+    );
     return unsubscribe;
   }, [user.uid]);
 
@@ -55,6 +60,9 @@ function TaskListContent({ user }: { user: User }) {
       </header>
 
       <main className="mx-auto max-w-2xl px-4 py-6">
+        {fetchError && (
+          <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{fetchError}</p>
+        )}
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-800">
             タスク一覧 ({tasks.length})
